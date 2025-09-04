@@ -30,9 +30,13 @@ async function start() {
   try {
     await db.initialize();
     console.log('Database initialized');
-    
+
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      console.log(`API endpoints available at http://localhost:${PORT}/api`);
+      console.log(
+        `Database file: ${process.env.DATABASE_URL || './data/tasks.sqlite3'}`,
+      );
     });
   } catch (error) {
     console.error('Failed to start server:', error);

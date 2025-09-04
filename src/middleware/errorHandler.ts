@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express'; // NextFunction unused
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -8,7 +8,7 @@ export function errorHandler(
   err: AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  // next: NextFunction // Unused
 ): void {
   console.error('Error:', err);
 

@@ -8,36 +8,50 @@ export function createSyncRouter(db: Database): Router {
   const taskService = new TaskService(db);
   const syncService = new SyncService(db, taskService);
 
-  // Trigger manual sync
-  router.post('/sync', async (req: Request, res: Response) => {
-    // TODO: Implement sync endpoint
-    // 1. Check connectivity first
-    // 2. Call syncService.sync()
-    // 3. Return sync result
-    res.status(501).json({ error: 'Not implemented' });
+  // Trigger manual sync backend-interview-challenge
+  router.post('/sync', async (_req: Request, res: Response) => {
+    try {
+      const online = await syncService.checkConnectivity();
+      if (!online) return res.status(503).json({ error: 'Server not reachable' });
+      const result = await syncService.sync();
+      return res.json(result);
+    } catch (error) {
+      return res.status(500).json({ error: 'Sync failed' });
+    }
   });
 
   // Check sync status
-  router.get('/status', async (req: Request, res: Response) => {
-    // TODO: Implement sync status endpoint
-    // 1. Get pending sync count
-    // 2. Get last sync timestamp
-    // 3. Check connectivity
-    // 4. Return status summary
-    res.status(501).json({ error: 'Not implemented' });
+  router.get('/status', async (_req: Request, res: Response) => {
+    try {
+      const pending = await db.all("SELECT COUNT(*) as count FROM sync_queue");
+      const lastSync = await db.get("SELECT MAX(last_synced_at) as last FROM tasks");
+      const online = await syncService.checkConnectivity();
+      return res.json({
+        pending: pending[0]?.count || 0,
+        last_synced_at: lastSync?.last,
+        online,
+      });
+    } catch (error) {
+      return res.status(500).json({ error: 'Failed to get sync status' });
+    }
   });
 
   // Batch sync endpoint (for server-side)
   router.post('/batch', async (req: Request, res: Response) => {
-    // TODO: Implement batch sync endpoint
-    // This would be implemented on the server side
-    // to handle batch sync requests from clients
-    res.status(501).json({ error: 'Not implemented' });
+    // Simulate server-side batch sync: echo back processed_items as success
+    const { items } = req.body;
+    if (!Array.isArray(items)) return res.status(400).json({ error: 'Invalid batch' });
+    const processed_items = items.map((item: any) => ({
+      client_id: item.task_id,
+      server_id: 'srv_' + item.task_id,
+      status: 'success',
+    }));
+    return res.json({ processed_items });
   });
 
   // Health check endpoint
-  router.get('/health', async (req: Request, res: Response) => {
-    res.json({ status: 'ok', timestamp: new Date() });
+  router.get('/health', async (_req: Request, res: Response) => {
+    return res.json({ status: 'ok', timestamp: new Date() });
   });
 
   return router;
