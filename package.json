@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon --watch src --exec tsx src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/server.js index.js app.js",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
@@ -49,4 +49,7 @@
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }
+  
+
+
 }
