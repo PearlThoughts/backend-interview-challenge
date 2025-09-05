@@ -5,6 +5,8 @@ import { Database } from './db/database';
 import { createTaskRouter } from './routes/tasks';
 import { createSyncRouter } from './routes/sync';
 import { errorHandler } from './middleware/errorHandler';
+import { TaskService } from './services/taskService';
+import { SyncService } from './services/syncService';
 
 dotenv.config();
 
@@ -18,19 +20,25 @@ app.use(express.json());
 // Initialize database
 const db = new Database(process.env.DATABASE_URL || './data/tasks.sqlite3');
 
-// Routes
-app.use('/api/tasks', createTaskRouter(db));
-app.use('/api', createSyncRouter(db));
-
-// Error handling
-app.use(errorHandler);
-
 // Start server
 async function start() {
   try {
     await db.initialize();
     console.log('Database initialized');
-    
+
+    // Create services and inject dependencies to break circular dependency
+    const taskService = new TaskService(db, null as any);
+    const syncService = new SyncService(db, taskService);
+    // Now set the correct syncService on taskService
+    (taskService as any).syncService = syncService;
+
+    // Routes
+    app.use('/api/tasks', createTaskRouter(db));
+    app.use('/api', createSyncRouter(db));
+
+    // Error handling
+    app.use(errorHandler);
+
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

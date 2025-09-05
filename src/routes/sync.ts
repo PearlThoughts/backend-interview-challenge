@@ -5,34 +5,48 @@ import { Database } from '../db/database';
 
 export function createSyncRouter(db: Database): Router {
   const router = Router();
-  const taskService = new TaskService(db);
+  // Create services first and inject them
+  const taskService = new TaskService(db, null as any); // Temporarily pass null to break the cycle
   const syncService = new SyncService(db, taskService);
+  // Now set the correct syncService on taskService
+  (taskService as any).syncService = syncService;
 
   // Trigger manual sync
   router.post('/sync', async (req: Request, res: Response) => {
-    // TODO: Implement sync endpoint
-    // 1. Check connectivity first
-    // 2. Call syncService.sync()
-    // 3. Return sync result
-    res.status(501).json({ error: 'Not implemented' });
+    try {
+      const isOnline = await syncService.checkConnectivity();
+      if (!isOnline) {
+        return res.status(503).json({ error: 'Server is currently unreachable' });
+      }
+      const syncResult = await syncService.sync();
+      res.json(syncResult);
+    } catch (error) {
+      console.error('Sync failed:', error);
+      res.status(500).json({ error: 'Failed to perform sync' });
+    }
   });
 
   // Check sync status
   router.get('/status', async (req: Request, res: Response) => {
-    // TODO: Implement sync status endpoint
-    // 1. Get pending sync count
-    // 2. Get last sync timestamp
-    // 3. Check connectivity
-    // 4. Return status summary
-    res.status(501).json({ error: 'Not implemented' });
+    try {
+      const pendingCount = await db.get(`SELECT COUNT(*) as count FROM sync_queue`);
+      const lastSync = await db.get(`SELECT MAX(last_synced_at) as last_synced FROM tasks`);
+      const isOnline = await syncService.checkConnectivity();
+
+      res.json({
+        status: isOnline ? 'online' : 'offline',
+        pending_tasks: pendingCount.count,
+        last_sync_at: lastSync.last_synced,
+      });
+    } catch (error) {
+      console.error('Failed to get sync status:', error);
+      res.status(500).json({ error: 'Failed to get sync status' });
+    }
   });
 
   // Batch sync endpoint (for server-side)
   router.post('/batch', async (req: Request, res: Response) => {
-    // TODO: Implement batch sync endpoint
-    // This would be implemented on the server side
-    // to handle batch sync requests from clients
-    res.status(501).json({ error: 'Not implemented' });
+    res.status(501).json({ error: 'Not implemented on client' });
   });
 
   // Health check endpoint
