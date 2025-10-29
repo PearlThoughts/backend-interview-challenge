@@ -12,9 +12,10 @@ export function createTaskRouter(db: Database): Router {
   router.get('/', async (req: Request, res: Response) => {
     try {
       const tasks = await taskService.getAllTasks();
-      res.json(tasks);
+      return res.json(tasks);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch tasks' });
+      console.error('GET /api/tasks error', error);
+      return res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
 
@@ -22,41 +23,56 @@ export function createTaskRouter(db: Database): Router {
   router.get('/:id', async (req: Request, res: Response) => {
     try {
       const task = await taskService.getTask(req.params.id);
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-      res.json(task);
+      if (!task) return res.status(404).json({ error: 'Task not found' });
+      return res.json(task);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch task' });
+      console.error('GET /api/tasks/:id error', error);
+      return res.status(500).json({ error: 'Failed to fetch task' });
     }
   });
 
   // Create task
   router.post('/', async (req: Request, res: Response) => {
-    // TODO: Implement task creation endpoint
-    // 1. Validate request body
-    // 2. Call taskService.createTask()
-    // 3. Return created task
-    res.status(501).json({ error: 'Not implemented' });
+    try {
+      const body = req.body;
+      if (!body || typeof body.title !== 'string' || body.title.trim() === '') {
+        return res.status(400).json({ error: 'title is required' });
+      }
+      const created = await taskService.createTask({
+        title: body.title,
+        description: body.description,
+        completed: !!body.completed,
+      });
+      return res.status(201).json(created);
+    } catch (error) {
+      console.error('POST /api/tasks error', error);
+      return res.status(500).json({ error: 'Failed to create task' });
+    }
   });
 
   // Update task
   router.put('/:id', async (req: Request, res: Response) => {
-    // TODO: Implement task update endpoint
-    // 1. Validate request body
-    // 2. Call taskService.updateTask()
-    // 3. Handle not found case
-    // 4. Return updated task
-    res.status(501).json({ error: 'Not implemented' });
+    try {
+      const updates = req.body;
+      const updated = await taskService.updateTask(req.params.id, updates);
+      if (!updated) return res.status(404).json({ error: 'Task not found' });
+      return res.json(updated);
+    } catch (error) {
+      console.error('PUT /api/tasks/:id error', error);
+      return res.status(500).json({ error: 'Failed to update task' });
+    }
   });
 
-  // Delete task
+  // Delete task (soft delete)
   router.delete('/:id', async (req: Request, res: Response) => {
-    // TODO: Implement task deletion endpoint
-    // 1. Call taskService.deleteTask()
-    // 2. Handle not found case
-    // 3. Return success response
-    res.status(501).json({ error: 'Not implemented' });
+    try {
+      const ok = await taskService.deleteTask(req.params.id);
+      if (!ok) return res.status(404).json({ error: 'Task not found' });
+      return res.status(204).send();
+    } catch (error) {
+      console.error('DELETE /api/tasks/:id error', error);
+      return res.status(500).json({ error: 'Failed to delete task' });
+    }
   });
 
   return router;
