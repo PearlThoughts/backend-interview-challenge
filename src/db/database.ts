@@ -84,4 +84,64 @@ export class Database {
       });
     });
   }
+    async createTask(task: any): Promise<void> {
+      const sql = `
+        INSERT INTO tasks (id, title, description, sync_status, is_deleted)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      await this.run(sql, [
+        task.id,
+        task.title,
+        task.description,
+        task.sync_status || 'pending',
+        task.is_deleted || 0,
+      ]);
+    }
+
+    async getAllTasks(): Promise<any[]> {
+      const sql = `SELECT * FROM tasks WHERE is_deleted = 0`;
+      return await this.all(sql);
+    }
+
+    async getTaskById(id: string): Promise<any> {
+      const sql = `SELECT * FROM tasks WHERE id = ?`;
+      return await this.get(sql, [id]);
+    }
+
+    async updateTask(id: string, updates: any): Promise<void> {
+      const sql = `
+        UPDATE tasks
+        SET title = ?, description = ?, sync_status = ?
+        WHERE id = ?
+      `;
+      await this.run(sql, [
+        updates.title,
+        updates.description,
+        updates.sync_status || 'pending',
+        id,
+      ]);
+    }
+
+    async deleteTask(id: string): Promise<void> {
+      const sql = `
+        UPDATE tasks
+        SET is_deleted = 1, sync_status = 'pending'
+        WHERE id = ?
+      `;
+      await this.run(sql, [id]);
+    }
+    async getTasksNeedSync(): Promise<any[]>{
+        const sql = `SELECT * FROM tasks WHERE sync_status IN ('pending', 'error') AND is_deleted = 0`;
+        return await this.all(sql);
+    }
+
+    async addToSyncQueue(taskId: string, operation: string, data: any): Promise<void> {
+        const id = taskId + '-' + Date.now(); // unique sync id
+        const sql = `
+            INSERT INTO sync_queue (id, task_id, operation, data)
+            VALUES (?, ?, ?, ?)
+  `;
+        await this.run(sql, [id, taskId, operation, JSON.stringify(data)]);
+    }
+
 }

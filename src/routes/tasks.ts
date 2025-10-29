@@ -37,7 +37,22 @@ export function createTaskRouter(db: Database): Router {
     // 1. Validate request body
     // 2. Call taskService.createTask()
     // 3. Return created task
-    res.status(501).json({ error: 'Not implemented' });
+    // res.status(501).json({ error: 'Not implemented' });
+      try {
+          const { title, description, sync_status } = req.body;
+
+          // If status is 'synced', directly save (this came from server sync)
+          if (sync_status === 'synced') {
+              const task = await taskService.createTask({ title, description, sync_status: 'synced' });
+              return res.status(201).json(task);
+          }
+
+          // Else mark as 'pending' and push to sync queue
+          const task = await taskService.createTask({ title, description, sync_status: 'pending' });
+          res.status(201).json(task);
+      } catch (error) {
+          res.status(500).json({ error: 'Failed to create task' });
+      }
   });
 
   // Update task
@@ -47,7 +62,24 @@ export function createTaskRouter(db: Database): Router {
     // 2. Call taskService.updateTask()
     // 3. Handle not found case
     // 4. Return updated task
-    res.status(501).json({ error: 'Not implemented' });
+    // res.status(501).json({ error: 'Not implemented' });
+      try {
+          const updates = req.body;
+          const id = req.params.id;
+
+          // If it's synced (e.g., server confirmed update)
+          if (updates.sync_status === 'synced') {
+              const updated = await taskService.updateTask(id, { ...updates, sync_status: 'synced' });
+              return res.json(updated);
+          }
+
+          const updatedTask = await taskService.updateTask(id, updates);
+          if (!updatedTask) return res.status(404).json({ error: 'Task not found' });
+          res.json(updatedTask);
+      } catch (error) {
+          res.status(500).json({ error: 'Failed to update task' });
+      }
+
   });
 
   // Delete task
@@ -56,7 +88,24 @@ export function createTaskRouter(db: Database): Router {
     // 1. Call taskService.deleteTask()
     // 2. Handle not found case
     // 3. Return success response
-    res.status(501).json({ error: 'Not implemented' });
+    // res.status(501).json({ error: 'Not implemented' });
+      try {
+          const { sync_status } = req.body;
+          const id = req.params.id;
+
+          // If deletion already confirmed from server
+          if (sync_status === 'synced') {
+              await taskService.deleteTask(id);
+              return res.json({ success: true });
+          }
+
+          const deleted = await taskService.deleteTask(id);
+          if (!deleted) return res.status(404).json({ error: 'Task not found' });
+          res.json({ success: true });
+      } catch (error) {
+          res.status(500).json({ error: 'Failed to delete task' });
+      }
+
   });
 
   return router;
